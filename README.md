@@ -41,3 +41,7 @@ content-type: application/json
   {"id": 2, "title": "Complete Assignment", "done": true},
   {"id": 3, "title": "Read a book", "done": false}
 ]
+
+###Swagger UI Interactive Documentation
+Below is the screenshot of our interactive API documentation available at http://127.0.0.1:8000/docs:
+![Swagger UI Screenshot](./swagger-screenshot.png)
