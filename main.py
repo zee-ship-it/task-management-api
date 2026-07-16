@@ -1,14 +1,23 @@
 from fastapi import FastAPI, HTTPException,status
 from pydantic import BaseModel
 
-app = FastAPI()
+app = FastAPI(
+  title="Task Management API",
+  description="A simple in-memeory CRUD API for managing a to-do list of tasks.",
+  version="1.0"
+)
 
  #def hello_server():
 #   return  f"Hello, server!"
 class Createtask(BaseModel):
   title: str
-  done:bool
-## tasks
+  
+
+class Updatetask(BaseModel):
+  title: str
+  done: bool
+
+## in-memory database (tasks)
 tasks=[
   { "id": 1, "title": "Go to gym","done":False },
   { "id": 2, "title": "Complete Assignment","done":True },
@@ -18,6 +27,7 @@ tasks=[
 #1. GET "/"
 @app.get("/")
 def get_root():
+  """Return API information."""
   return {
     "name": "Task API",
     "version": "1.0",
@@ -27,16 +37,19 @@ def get_root():
 #2. GET "/health"
 @app.get("/health")
 def get_health():
+  """Return health check endpoint to verify the API is running."""
   return {"status": "ok"}
 
 #get /tasks
 @app.get("/tasks")
 def get_tasks():
+  """Return the list of all tasks."""
   return tasks
 
 #get id
 @app.get("/tasks/{id}")
 def get_single_task(id:int):
+  """Return a single task by its ID."""
   for task in tasks:
     if task["id"] == id:
       return task
@@ -46,6 +59,7 @@ def get_single_task(id:int):
 
 @app.post("/tasks", status_code=status.HTTP_201_CREATED )
 def create_task(task_inp: Createtask):
+  """Create a new task with validation."""
   if not task_inp.title:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Title is required!")
   new_id= max(task["id"] for task in tasks) + 1 if tasks else 1
@@ -55,7 +69,8 @@ def create_task(task_inp: Createtask):
 
 ## Update task
 @app.put("/tasks/{id}")
-def update_task(id:int ,task_inp: Createtask):
+def update_task(id:int ,task_inp: Updatetask):
+  """Update an existing task by its ID with validation."""
   if not task_inp.title.strip():
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Title is required!")
   for task in tasks:
@@ -68,6 +83,7 @@ def update_task(id:int ,task_inp: Createtask):
 # Delete task
 @app.delete("/tasks/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(id:int):
+  """Delete a task by its ID."""
   for task in tasks:
     if task["id"] == id:
       tasks.remove(task)
