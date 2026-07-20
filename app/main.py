@@ -1,10 +1,12 @@
 from fastapi import FastAPI, HTTPException,status
 from pydantic import BaseModel
+from app.repository import InMemoryTaskRepository
+
 
 app = FastAPI(
   title="Task Management API",
-  description="A simple in-memeory CRUD API for managing a to-do list of tasks.",
-  version="1.0"
+  description="Clean Architecture CRUD API with Repository Pattern.",
+  version="2.0"
 )
 
  #def hello_server():
