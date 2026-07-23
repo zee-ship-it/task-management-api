@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from app.database import get_db_connection
-
+# from app.database import get_db_connection
+import sqlite3
 class TaskRepository(ABC):
     @abstractmethod
     def get_all_tasks(self):
@@ -60,57 +60,140 @@ class InmemoryTaskRepository(TaskRepository):
                 return True
         return False
 
-class PostgresTaskRepository(TaskRepository):
+# class PostgresTaskRepository(TaskRepository):
+#     def get_all_tasks(self):
+#         connection = get_db_connection()
+#         cursor = connection.cursor()
+#         cursor.execute("SELECT id, title, done FROM tasks ORDER BY id ASC;")
+#         tasks = cursor.fetchall()
+#         cursor.close()
+#         connection.close()
+#         return tasks
+
+#     def get_by_id(self, task_id: int):
+#         connection = get_db_connection()
+#         cursor = connection.cursor()
+#         cursor.execute("SELECT id, title, done FROM tasks WHERE id = %s;", (task_id,))
+#         task = cursor.fetchone()
+#         cursor.close()
+#         connection.close()
+#         return task
+
+#     def create_task(self, title: str):
+#         connection = get_db_connection()
+#         cursor = connection.cursor()
+#         cursor.execute(
+#             "INSERT INTO tasks (title, done) VALUES (%s, %s) RETURNING id, title, done;",
+#             (title, False),
+#         )
+#         task = cursor.fetchone()
+#         connection.commit()
+#         cursor.close()
+#         connection.close()
+#         return task
+
+#     def update_task(self, task_id: int, title: str, done: bool):
+#         connection = get_db_connection()
+#         cursor = connection.cursor()
+#         cursor.execute(
+#             "UPDATE tasks SET title = %s, done = %s WHERE id = %s RETURNING id, title, done;",
+#             (title, done, task_id),
+#         )
+#         updated_task = cursor.fetchone()
+#         connection.commit()
+#         cursor.close()
+#         connection.close()
+#         return updated_task
+
+#     def delete_task(self, task_id: int):
+#         connection = get_db_connection()
+#         cursor = connection.cursor()
+#         cursor.execute("DELETE FROM tasks WHERE id = %s RETURNING id;", (task_id,))
+#         deleted_row = cursor.fetchone()
+#         connection.commit()
+#         cursor.close()
+#         connection.close()
+#         return deleted_row is not None
+
+class SqliteTaskRepository(TaskRepository):
+    def __init__(self, db_path="tasks.db"):
+        self.db_path = db_path
+        self._initialize_db()
+
+    def get_connection(self):
+        connection = sqlite3.connect(self.db_path)
+        connection.row_factory = sqlite3.Row
+        return connection
+
+    def _initialize_db(self):
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            """CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                done BOOLEAN NOT NULL DEFAULT 0
+            ); """
+           
+        )
+        cursor.execute("SELECT COUNT(*) FROM tasks;")
+        if cursor.fetchone()[0] == 0:
+            cursor.executemany(
+                "INSERT INTO tasks (title, done) VALUES (?, ?);",
+                [
+                    ("Go to gym", False),
+                    ("Complete Assignment", True),
+                    ("Read a book", False),
+                ],
+            )
+        connection.commit()
+        connection.close()
+
     def get_all_tasks(self):
-        connection = get_db_connection()
+        connection = self.get_connection()
         cursor = connection.cursor()
         cursor.execute("SELECT id, title, done FROM tasks ORDER BY id ASC;")
-        tasks = cursor.fetchall()
-        cursor.close()
+        tasks = [dict(row) for row in cursor.fetchall()]
         connection.close()
         return tasks
 
     def get_by_id(self, task_id: int):
-        connection = get_db_connection()
+        connection = self.get_connection()
         cursor = connection.cursor()
-        cursor.execute("SELECT id, title, done FROM tasks WHERE id = %s;", (task_id,))
-        task = cursor.fetchone()
-        cursor.close()
+        cursor.execute("SELECT id, title, done FROM tasks WHERE id = ?;", (task_id,))
+        row = cursor.fetchone()
         connection.close()
-        return task
+        return dict(row) if row else None
 
     def create_task(self, title: str):
-        connection = get_db_connection()
+        connection = self.get_connection()
         cursor = connection.cursor()
         cursor.execute(
-            "INSERT INTO tasks (title, done) VALUES (%s, %s) RETURNING id, title, done;",
-            (title, False),
+            "INSERT INTO tasks (title, done) VALUES (?, 0) ;",
+            (title,)
         )
-        task = cursor.fetchone()
         connection.commit()
-        cursor.close()
+        new_id = cursor.lastrowid
         connection.close()
-        return task
+        return self.get_by_id(new_id)
 
     def update_task(self, task_id: int, title: str, done: bool):
-        connection = get_db_connection()
+        connection = self.get_connection()
         cursor = connection.cursor()
         cursor.execute(
-            "UPDATE tasks SET title = %s, done = %s WHERE id = %s RETURNING id, title, done;",
-            (title, done, task_id),
+            "UPDATE tasks SET title = ?, done = ? WHERE id = ?;",
+            (title, done, task_id)
         )
-        updated_task = cursor.fetchone()
         connection.commit()
-        cursor.close()
+        updated= cursor.rowcount > 0
         connection.close()
-        return updated_task
+        return self.get_by_id(task_id) if updated else None 
 
     def delete_task(self, task_id: int):
-        connection = get_db_connection()
+        connection = self.get_connection()
         cursor = connection.cursor()
-        cursor.execute("DELETE FROM tasks WHERE id = %s RETURNING id;", (task_id,))
-        deleted_row = cursor.fetchone()
+        cursor.execute("DELETE FROM tasks WHERE id = ?;", (task_id,))
         connection.commit()
-        cursor.close()
+        deleted= cursor.rowcount > 0
         connection.close()
-        return deleted_row is not None
+        return deleted

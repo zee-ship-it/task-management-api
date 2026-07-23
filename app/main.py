@@ -1,15 +1,16 @@
 from fastapi import FastAPI, HTTPException,status
 from pydantic import BaseModel
-from app.repository import PostgresTaskRepository
+from app.repository import SqliteTaskRepository
+
 
 
 app = FastAPI(
   title="Task Management API",
-  description="Clean Architecture CRUD API with Repository Pattern.",
+  description="With SQLITE",
   version="2.0"
 )
 
-repo= PostgresTaskRepository()
+repo= SqliteTaskRepository()
 
  #def hello_server():
 #   return  f"Hello, server!"
